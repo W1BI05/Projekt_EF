@@ -9,7 +9,7 @@ mydb = mysql.connector.connect(
   host="localhost",
   user="root",
   password="MaStri.05",
-  database="firma"
+  database="news"
 )
 
 #Hilfsklasse für Decimal Variablen
@@ -28,21 +28,22 @@ CORS(app)
 
 @app.route('/')
 def home():
-    return redirect(url_for('products'))
+    return redirect(url_for('article'))
 
 
-@app.route("/products", methods = ['GET'])
+@app.route("/articles", methods = ['GET'])
 def products():
     mycursor = mydb.cursor()
-    sqlQuery = "SELECT * FROM produkt"
+    sqlQuery = "SELECT * FROM article"
     mycursor.execute(sqlQuery)
-    return jsonify(mycursor.fetchall())
+    return mycursor.fetchall()
+    #return jsonify(mycursor.fetchall())
 
 
-@app.route('/products/<product>',methods = ['GET'])
+@app.route('/article/<product>',methods = ['GET'])
 def productDetail(product):
     mycursor = mydb.cursor()
-    sqlQuery = "SELECT * FROM produkt WHERE ID_Produkt = '" + product + "'"
+    sqlQuery = "SELECT * FROM article WHERE ID_Article = '" + product + "'"
     mycursor.execute(sqlQuery)
     myresult = mycursor.fetchall()
     myresult = json.dumps(myresult, cls=DecimalEncoder)
@@ -57,21 +58,21 @@ def addProduct():
     #print(data)
     mycursor = mydb.cursor()
     if data['id'] != "":
-        sql = "UPDATE produkt SET Bezeichnung = '" + data['description'] +"', E_Preis = '" + data['e_price'] +"', V_Preis = '" + data['v_price'] +"', Anzahl = '" + data['amount'] +"' WHERE ID_Produkt = '" + data['id'] + "'"
+        sql = "UPDATE article SET Bezeichnung = '" + data['description'] +"', E_Preis = '" + data['e_price'] +"', V_Preis = '" + data['v_price'] +"', Anzahl = '" + data['amount'] +"' WHERE ID_Produkt = '" + data['id'] + "'"
         mycursor.execute(sql)
     else:
-        sql = "INSERT INTO produkt (Bezeichnung, E_Preis, V_Preis, Anzahl) VALUES (%s, %s, %s, %s)"
+        sql = "INSERT INTO article (Bezeichnung, E_Preis, V_Preis, Anzahl) VALUES (%s, %s, %s, %s)"
         val = (data['description'], data['e_price'], data['v_price'], data['amount'])
         mycursor.execute(sql, val)
     print(mydb.commit())
     return "Success"
 
 
-@app.route('/products/<id>',methods = ['DELETE'])
+@app.route('/article/<id>',methods = ['DELETE'])
 def deleteProduct(id):
     #print(id)
     mycursor = mydb.cursor()
-    sql = "DELETE FROM produkt WHERE ID_Produkt = '" + id + "'"
+    sql = "DELETE FROM article WHERE ID_Article = '" + id + "'"
     mycursor.execute(sql)
     #print(mydb.commit())
     return "Success"
