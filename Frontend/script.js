@@ -1,5 +1,7 @@
 const Input = document.getElementById("myInput")
-var Keywords = {}
+const List = document.getElementById("myUL")
+
+var Keywords = ["Tesla", "StockX"]
 
 GetKeywords()
 SetSearchList()
@@ -8,7 +10,7 @@ console.log(Keywords)
 
 
 
-async function getProducts() {
+async function getArticles() {
     let url = 'http://localhost:5000/article';
     try {
         let res = await fetch(url);
@@ -19,7 +21,8 @@ async function getProducts() {
 }
 
 function GetKeywords() {
-  let articles = getProducts();
+  let articles = getArticles();
+
   for (let i = 0; i < articles.length; i++) {
 
     Keywords[i] = articles[i][3];
@@ -28,7 +31,14 @@ function GetKeywords() {
 }
 
 function SetSearchList() {
-
+    for (i = 0; i < Keywords.length; i++) {
+        var li = document.createElement("li")
+        var a = document.createElement("a")
+        a.innerHTML = Keywords[i]
+        a.setAttribute( "onClick", "ItemPressed(this.innerHTML);" );
+        li.appendChild(a)
+        List.appendChild(li)
+    }
 }
 
 function ItemPressed(Text) {
@@ -36,6 +46,8 @@ function ItemPressed(Text) {
 }
 
 function SearchChanged() {
+    document.getElementById("errorMessage").innerHTML = ""
+
   // Declare variables
   var input, filter, ul, li, a, i, txtValue;
   input = document.getElementById('myInput');
@@ -56,9 +68,13 @@ function SearchChanged() {
 }
 
 function SearchEnter() {
-    /* Validate Search Enters etc... */
+    if (Keywords.includes(Input.value)) {
+        localStorage.setItem('data', JSON.stringify(Input));
+        window.location.href = "display.html?name=1";
+    } else {
+        document.getElementById("errorMessage").innerHTML = "There are no Articles on this topic"
+    }
 
-    localStorage.setItem('data', JSON.stringify(Input));
-    window.location.href = "display.html?name=1";
+
 };
 

@@ -28,7 +28,7 @@ CORS(app)
 
 @app.route('/')
 def home():
-    return redirect(url_for('article'))
+    return redirect(url_for('articles'))
 
 
 @app.route("/articles", methods = ['GET'])
@@ -36,8 +36,8 @@ def products():
     mycursor = mydb.cursor()
     sqlQuery = "SELECT * FROM article"
     mycursor.execute(sqlQuery)
+
     return mycursor.fetchall()
-    #return jsonify(mycursor.fetchall())
 
 
 @app.route('/article/<product>',methods = ['GET'])
