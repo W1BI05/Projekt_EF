@@ -1,17 +1,20 @@
 const Input = document.getElementById("myInput")
 const List = document.getElementById("myUL")
+var activeElement = document.activeElement;
 
-var Keywords = ["Tesla", "StockX"]
-
-GetKeywords()
-SetSearchList()
-
-console.log(Keywords)
-
+var Words = []
+fetch('./keywords.json')
+    .then((message) => message.json())
+    .then((data) => SetSearchList(data))
 
 
-async function getArticles() {
-    let url = 'http://localhost:5000/article';
+
+
+//GetKeywords()
+List.style.visibility = "true"
+
+/*async function getArticles() {
+    let url = 'http://localhost:5000/articles';
     try {
         let res = await fetch(url);
         return await res.json();
@@ -20,17 +23,26 @@ async function getArticles() {
     }
 }
 
-function GetKeywords() {
-  let articles = getArticles();
+async function GetKeywords() {
+  let articles = await getArticles();
+console.log(articles)
 
   for (let i = 0; i < articles.length; i++) {
-
-    Keywords[i] = articles[i][3];
-
+    var words =  articles[i][2].split('_')
+      for (let i = 0; i < words.length; i++) {
+          if (Keywords.includes(words[i]) === false) {
+              Keywords.push(words[i])
+          }
+      }
   }
-}
+  SetSearchList()
+}*/
 
-function SetSearchList() {
+
+function SetSearchList(Keywords) {
+
+    Words = Keywords
+
     for (i = 0; i < Keywords.length; i++) {
         var li = document.createElement("li")
         var a = document.createElement("a")
@@ -39,14 +51,26 @@ function SetSearchList() {
         li.appendChild(a)
         List.appendChild(li)
     }
+
+    List.style.visibility = "true"
 }
 
 function ItemPressed(Text) {
   Input.value = Text
+    List.style.visibility = "true"
 }
 
 function SearchChanged() {
+    console.log("changed")
     document.getElementById("errorMessage").innerHTML = ""
+
+    if (activeElement === Input && Input.value.length > 3) {
+        console.log(Input.value.length)
+        List.style.visibility = "false"
+        console.log("true")
+    } else {
+        List.style.visibility = "true"
+    }
 
   // Declare variables
   var input, filter, ul, li, a, i, txtValue;
@@ -68,13 +92,11 @@ function SearchChanged() {
 }
 
 function SearchEnter() {
-    if (Keywords.includes(Input.value)) {
-        localStorage.setItem('data', JSON.stringify(Input));
-        window.location.href = "display.html?name=1";
+    if (Words.includes(Input.value)) {
+
+    location.replace("display.html?word="+ Input.value+"");
     } else {
         document.getElementById("errorMessage").innerHTML = "There are no Articles on this topic"
     }
-
-
 };
 

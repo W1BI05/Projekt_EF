@@ -1,181 +1,153 @@
-var yourdata = JSON.parse(localStorage.getItem('data'));
-console.log(yourdata)
+var url_string = window.location;
+var url = new URL(url_string);
+var Keyword = url.searchParams.get("word");
 
-var xyValues = [
-  {x:50, y:7},
-  {x:60, y:8},
-  {x:70, y:8},
-  {x:80, y:9},
-  {x:90, y:9},
-  {x:100, y:9},
-  {x:110, y:10},
-  {x:120, y:11},
-  {x:130, y:14},
-  {x:140, y:14},
-  {x:150, y:45}
-];
 
-new Chart("Chart 1", {
-  type: "scatter",
-  data: {
-    datasets: [{
-      pointRadius: 8,
-      pointBackgroundColor: "rgb(0,0,255)",
-      data: xyValues
-    }]
-  },
-  options: {
-    legend: {display: false},
-    scales: {
-      xAxes: [{ticks: {min: 40, max:160}}],
-      yAxes: [{ticks: {min: 6, max:50}}],
+
+const NYTimesApiKey = 'ivOAVvz7llyR8AeOKo23e4sCxCGmkMOQ';
+const OpenAIApiKey = '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';
+
+async function fetchArticles(startDate, endDate) {
+  try {
+    const startYear = startDate.getFullYear();
+    const startMonth = startDate.getMonth() + 1;
+    const endYear = endDate.getFullYear();
+    const endMonth = endDate.getMonth() + 1;
+
+    const apiUrl = `https://api.nytimes.com/svc/archive/v1/${startYear}/${startMonth}.json?api-key=${NYTimesApiKey}`;
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    let docs = [];
+
+    if (data && data.response && data.response.docs) {
+      docs = data.response.docs;
+    }
+
+    // Fetch articles for each month within the specified range
+    for (let year = startYear; year <= endYear; year++) {
+      const startMonth = year === startYear ? startDate.getMonth() + 1 : 1;
+      const endMonth = year === endYear ? endDate.getMonth() + 1 : 12;
+
+      for (let month = startMonth; month <= endMonth; month++) {
+        const apiUrl = `https://api.nytimes.com/svc/archive/v1/${year}/${month}.json?api-key=${NYTimesApiKey}`;
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+
+        if (data && data.response && data.response.docs) {
+          docs = docs.concat(data.response.docs);
+        }
+      }
+    }
+
+    return docs;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function davinciRequest(subject, news) {
+  const url = 'https://api.openai.com/v1/completions';
+  const openai_key = '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';
+
+  const data = {
+    model: 'text-davinci-003',
+    prompt: `Determine how positive or negative the following news is for ${subject}. Then, evaluate how strongly this news article is related to ${subject} compared to other news concerning ${subject}. Here is the news headline: "${news}" Only return 2 values without explanation in this format: [Very Negative / Negative / Slightly Negative / Neutral / Slightly Positive / Positive / Very Positive], [Not Related At All / Few Relations / Slightly Related / Many Relations / Fully Related]`,
+    temperature: 0,
+    max_tokens: 256,
+    top_p: 1,
+    frequency_penalty: 0,
+    presence_penalty: 0
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${openai_key}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  const json = await response.json();
+
+  if(json.choices != undefined) {
+    const result = json.choices[0].text.split(",");
+    const positivity = result[0].trim();
+    const relation = result[1].trim();
+    return [positivity, relation];
+  }
+  return [null, null]
+}
+
+async function test(startDate, endDate, subject) {
+  const _docs = await fetchArticles(startDate, endDate);
+  const docs = removeDuplicates(_docs);
+  const filteredArticles = getArticlesWithKeyword(subject, docs);
+  console.log(filteredArticles.length);
+
+  for (let i = 0; i < filteredArticles.length; i++) {
+    const answer = await davinciRequest(subject,filteredArticles[i].abstract);
+    filteredArticles[i]["OpenAI_evaluation"] = answer;
+    console.log(i);
+  }
+
+  return filteredArticles
+}
+
+function getAllKeywords(docs) {
+  let keywords = [];
+  for (let i = 0; i < docs.length; i++) {
+    const articleKeywords = docs[i].keywords;
+    for (let j = 0; j < articleKeywords.length; j++) {
+      const keyword = articleKeywords[j].value;
+      if (!keywords.includes(keyword)) {
+        keywords.push(keyword);
+      }
     }
   }
-});
-
-
-
-
-
-
-
-async function getProducts() {
-    let url = 'http://localhost:5000/products';
-    try {
-        let res = await fetch(url);
-        return await res.json();
-    } catch (error) {
-        console.log(error);
-    }
+  return keywords;
 }
 
-async function getProduct(id) {
-    let url = 'http://localhost:5000/products/' + id;
-    try {
-        let res = await fetch(url);
-        return await res.json();
-    } catch (error) {
-        console.log(error);
-    }
+function formatArticles(docs) {
+  const articles = docs.map(article => {
+    return {
+      abstract: article.abstract,
+      keywords: article.keywords.map(keyword => keyword.value),
+      web_url: article.web_url,
+      pub_date: article.pub_date
+    };
+  });
+  return articles;
 }
 
-async function renderProducts() {
-    let products = await getProducts();
-    for (let i = 0; i < products.length; i++) {
-        var table = document.getElementById("products");
-        var row = table.insertRow(-1);
-        var cell1 = row.insertCell(0);
-        var cell2 = row.insertCell(1);
-        var cell3 = row.insertCell(2);
-        var cell4 = row.insertCell(3);
-        var cell5 = row.insertCell(4);
-        var cell6 = row.insertCell(5);
-        var cell7 = row.insertCell(6);
-        cell1.innerHTML = products[i][0];
-        cell2.innerHTML = products[i][1];
-        cell3.innerHTML = products[i][2];
-        cell4.innerHTML = products[i][3];
-        cell5.innerHTML = products[i][4];
-        cell6.innerHTML = "<button onclick='editProduct(this)'><i class=\"fas fa-edit\"></i></button>"
-        cell7.innerHTML = "<button onclick='removeProduct(this)'><i class=\"fas fa-trash\"></i></button>"
-
-    }
+function getArticlesWithKeyword(keyword, docs) {
+  const articles = docs.filter(article => {
+    return article.keywords.some(kw => kw.value.toLowerCase() === keyword.toLowerCase());
+  }).map(article => {
+    return {
+      abstract: article.abstract,
+      keywords: article.keywords.map(keyword => keyword.value),
+      web_url: article.web_url,
+      pub_date: article.pub_date
+    };
+  });
+  return articles;
 }
 
-async function createProduct() {
-    modal.style.display = "none";
-    let url = 'http://localhost:5000/products';
-    let id = document.forms["myForm"]["id"].value;
-    let description = document.forms["myForm"]["description"].value;
-    let e_price = document.forms["myForm"]["e_price"].value;
-    let v_price = document.forms["myForm"]["v_price"].value;
-    let amount = document.forms["myForm"]["amount"].value;
-
-
-    let data = {'id': id, 'description': description, 'e_price': e_price, 'v_price': v_price, 'amount': amount};
-
-    let res = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-    });
-
-    removeAllRows();
-    renderProducts();
-
+function removeDuplicates(arr) {
+  return arr.filter((item, index) => {
+    // Find the first index of the current item
+    const firstIndex = arr.findIndex(
+      (t) => t.web_url === item.web_url && t.pub_date === item.pub_date
+    );
+    // Return true only if the current index is the first index
+    return index === firstIndex;
+  });
 }
 
-async function removeProduct(r){
-    var i = r.parentNode.parentNode.rowIndex;
-    let id = document.getElementById("products").rows[i].children[0].innerHTML;
-    let url = 'http://localhost:5000/products/' + id;
-    let res = await fetch(url, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(id),
-    });
-
-    removeAllRows();
-    renderProducts();
-
+async function init() {
+  const results = await test(new Date("04-01-22"), new Date("04-01-22"), "Apple Inc")
+  console.log(results)
 }
 
-function removeAllRows(){
-    var mytab = document.getElementById("products");
-    for (let row of mytab.rows){
-        if (row.rowIndex != 0){
-            row.remove();
-        }
-    }
-    if (mytab.rows.length > 1){
-        removeAllRows();
-    }
-}
-
-async function editProduct(r){
-    var i = r.parentNode.parentNode.rowIndex;
-    let id = document.getElementById("products").rows[i].children[0].innerHTML;
-    let product = await getProduct(id);
-
-    document.getElementById("id").value = product[0][0];
-    document.getElementById("description").value = product[0][1];
-    document.getElementById("e_price").value = product[0][2];
-    document.getElementById("v_price").value = product[0][3];
-    document.getElementById("amount").value = product[0][4];
-    document.getElementById("mySubmit").value = "Speichern";
-
-    modal.style.display = "block";
-}
-
-renderProducts();
-
-
-// Get the modal
-var modal = document.getElementById("myModal");
-
-// Get the button that opens the modal
-var btn = document.getElementById("myBtn");
-
-// Get the <span> element that closes the modal
-var span = document.getElementsByClassName("close")[0];
-
-// When the user clicks on the button, open the modal
-btn.onclick = function() {
-    modal.style.display = "block";
-}
-
-// When the user clicks on <span> (x), close the modal
-span.onclick = function() {
-    modal.style.display = "none";
-}
-
-// When the user clicks anywhere outside of the modal, close it
-window.onclick = function(event) {
-    if (event.target == modal) {
-        modal.style.display = "none";
-    }
-}
+init();
