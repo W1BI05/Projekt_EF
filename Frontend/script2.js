@@ -4,8 +4,8 @@ var Keyword = url.searchParams.get("word");
 
 
 
-const NYTimesApiKey = 'ivOAVvz7llyR8AeOKo23e4sCxCGmkMOQ';
-const OpenAIApiKey = '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';
+const NYTimesApiKey = '';
+const OpenAIApiKey = '';
 
 async function fetchArticles(startDate, endDate) {
   try {
